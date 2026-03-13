@@ -6,6 +6,7 @@ public class Board : MonoBehaviour
     public static readonly Vector2Int Size = new(10, 20);
     [SerializeField] private Cell cellPrefab;
     [SerializeField] private Transform cellsTransform;
+    [SerializeField] private NextFrame nextFrame;
 
     private readonly Cell[,] cells = new Cell[Size.y, Size.x];
     private readonly int[,] data = new int[Size.y, Size.x];
@@ -17,6 +18,9 @@ public class Board : MonoBehaviour
     private float pieceDropTime = 0f;
 
     public readonly List<int> fullRows = new();
+    private int topRowExclusive = 0;
+
+    private Vector2Int ghostPoint;
 
     private void Start()
     {
@@ -30,7 +34,8 @@ public class Board : MonoBehaviour
             }
         }
 
-        SpawnPiece();
+        SpawnPiece(new Piece(Random.Range(0, Tetrominoes.Length), Random.Range(0, 4)));
+        nextFrame.SpawnNextPiece();
     }
 
     private void Update()
@@ -42,6 +47,7 @@ public class Board : MonoBehaviour
 
             if (!DropPiece())
             {
+                HideGhost();
                 LockPiece();
                 return;
             }
@@ -63,18 +69,29 @@ public class Board : MonoBehaviour
         {
             RotatePiece();
         }
+        else if (Input.GetKeyDown(KeyCode.Space))
+        {
+            HandDropPiece();
+        }
     }
 
-    private void SpawnPiece()
+    private void SpawnPiece(Piece piece)
     {
-        tetrominoIndex = Random.Range(0, Tetrominoes.Length);
+        tetrominoIndex = piece.TetrominoIndex;
+        pieceRotationIndex = piece.RotationIndex;
 
         piecePoint = new(3, 17);
-        pieceRotationIndex = 0;
 
         pieceDropTime = 0f;
 
+        ShowGhost();
         ShowPiece();
+
+        if (!IsValidPiece(piecePoint, pieceRotationIndex))
+        {
+            Debug.Log("Game Over");
+            enabled = false;
+        }
     }
 
     private void MovePiece(Vector2Int direction)
@@ -83,7 +100,11 @@ public class Board : MonoBehaviour
         if (!IsValidPiece(point, pieceRotationIndex)) return;
 
         HidePiece();
+        HideGhost();
+
         piecePoint = point;
+
+        ShowGhost();
         ShowPiece();
     }
 
@@ -104,8 +125,10 @@ public class Board : MonoBehaviour
         if (!IsValidPiece(piecePoint, rotationIndex)) return;
 
         HidePiece();
+        HideGhost();
         pieceRotationIndex = rotationIndex;
         ShowPiece();
+        ShowGhost();
     }
 
     private void HidePiece()
@@ -124,10 +147,23 @@ public class Board : MonoBehaviour
         if (!IsValidPiece(point, pieceRotationIndex)) return false;
 
         HidePiece();
+        HideGhost();
         piecePoint = point;
         ShowPiece();
+        ShowGhost();
 
         return true;
+    }
+    private void HandDropPiece()
+    {
+        HidePiece();
+        HideGhost();
+        while (IsValidPiece(piecePoint + Vector2Int.down, pieceRotationIndex))
+        {
+            piecePoint += Vector2Int.down;
+        }
+
+        LockPiece();
     }
 
     public void LockPiece()
@@ -141,8 +177,12 @@ public class Board : MonoBehaviour
             cells[lockPoint.y, lockPoint.x].Show(Color.white);
         }
 
+        topRowExclusive = Mathf.Min(Size.y, Mathf.Max(topRowExclusive, piecePoint.y + 4));
+
         ClearFullRows();
-        SpawnPiece();
+
+        SpawnPiece(nextFrame.GetNextPiece());
+        nextFrame.SpawnNextPiece();
     }
 
     private bool IsValidPiece(Vector2Int point, int rotationIndex)
@@ -191,10 +231,12 @@ public class Board : MonoBehaviour
                 }
             }
 
-            for (var r = fullRows[^1] + 1; r < Size.y; r++)
+            for (var r = fullRows[^1] + 1; r < topRowExclusive; r++)
             {
                 DropRow(r, fullRows.Count);
             }
+
+            topRowExclusive -= fullRows.Count;
         }
     }
 
@@ -236,5 +278,39 @@ public class Board : MonoBehaviour
                 fullRows.Add(r);
             }
         }
+    }
+    public void ShowGhost()
+    {
+        ghostPoint = piecePoint;
+
+        while (IsValidPiece(ghostPoint + Vector2Int.down, pieceRotationIndex))
+        {
+            ghostPoint += Vector2Int.down;
+        }
+
+        if (ghostPoint != piecePoint)
+        {
+            var tetromino = Tetrominoes.Get(tetrominoIndex, pieceRotationIndex);
+            var pieceColor = Tetrominoes.Colors[tetrominoIndex];
+
+            foreach (var p in tetromino)
+            {
+                cells[ghostPoint.y + p.y, ghostPoint.x + p.x].Ghost(pieceColor);
+            }
+        }
+    }
+    public void HideGhost()
+    {
+        var tetromino = Tetrominoes.Get(tetrominoIndex, pieceRotationIndex);
+
+        foreach (var p in tetromino)
+        {
+            cells[ghostPoint.y + p.y, ghostPoint.x + p.x].Hide();
+        }
+    }
+    void OnDrawGizmos()
+    {
+        Gizmos.color = Color.green;
+        Gizmos.DrawLine(new Vector3(-1, topRowExclusive, 0), new Vector3(11, topRowExclusive, 0));
     }
 }
