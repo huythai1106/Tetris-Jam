@@ -34,7 +34,16 @@ public class Board : MonoBehaviour
             }
         }
 
-        SpawnPiece(new Piece(Random.Range(0, Tetrominoes.Length), Random.Range(0, 4)));
+        // Spawn vien dau tien
+        int firstPieceIndex = Random.Range(0, Tetrominoes.Length);
+        int firstPieceRotationIndex = Random.Range(0, 4);
+
+        if (firstPieceIndex == 0) // I piece
+        {
+            firstPieceRotationIndex = Random.Range(0, 2) == 0 ? 0 : 2; // I piece has only 2 unique rotations
+        }
+
+        SpawnPiece(new Piece(firstPieceIndex, firstPieceRotationIndex));
         nextFrame.SpawnNextPiece();
     }
 
