@@ -7,7 +7,8 @@ public class Board : MonoBehaviour
     [SerializeField] private Cell cellPrefab;
     [SerializeField] private Transform cellsTransform;
     [SerializeField] private NextFrame nextFrame;
-
+    private Piece nextPiece;
+    bool currentPiece = true;
     private readonly Cell[,] cells = new Cell[Size.y, Size.x];
     private readonly int[,] data = new int[Size.y, Size.x];
 
@@ -21,6 +22,12 @@ public class Board : MonoBehaviour
     private int topRowExclusive = 0;
 
     private Vector2Int ghostPoint;
+
+    // Public properties để AI có thể lấy thông tin
+    public int TetrominoIndex => tetrominoIndex;
+    public int PieceRotationIndex => pieceRotationIndex;
+    public Vector2Int PiecePoint => piecePoint;
+    public int[,] BoardData => data;
 
     private void Start()
     {
@@ -44,11 +51,14 @@ public class Board : MonoBehaviour
         }
 
         SpawnPiece(new Piece(firstPieceIndex, firstPieceRotationIndex));
-        nextFrame.SpawnNextPiece();
+        GameManager.Instance.SpawnNextPiece();
+        //nextFrame.SpawnNextPiece();
     }
 
     private void Update()
     {
+        if (!currentPiece) return;
+
         pieceDropTime += Time.deltaTime;
         if (pieceDropTime >= dropTime)
         {
@@ -83,9 +93,23 @@ public class Board : MonoBehaviour
             HandDropPiece();
         }
     }
-
-    private void SpawnPiece(Piece piece)
+    public void SetNextPiece(Piece piece)
     {
+        nextPiece = piece;
+
+        if (!currentPiece)
+        {
+            SpawnPiece(nextPiece);
+            nextPiece = null;
+
+            GameManager.Instance.SpawnNextPiece();
+            GameManager.Instance.canAction = true;
+        }
+    }
+    public void SpawnPiece(Piece piece)
+    {
+        if (piece == null) return;
+        currentPiece = true;
         tetrominoIndex = piece.TetrominoIndex;
         pieceRotationIndex = piece.RotationIndex;
 
@@ -190,8 +214,19 @@ public class Board : MonoBehaviour
 
         ClearFullRows();
 
-        SpawnPiece(nextFrame.GetNextPiece());
-        nextFrame.SpawnNextPiece();
+        if (nextPiece != null)
+        {
+            SpawnPiece(nextPiece);
+            nextPiece = null;
+            GameManager.Instance.SpawnNextPiece();
+            GameManager.Instance.canAction = true;
+        }
+        else
+        {
+            currentPiece = false;
+        }
+        //currentPiece = false;
+        //nextFrame.SpawnNextPiece();
     }
 
     private bool IsValidPiece(Vector2Int point, int rotationIndex)
@@ -223,6 +258,12 @@ public class Board : MonoBehaviour
         FullRows();
         if (fullRows.Count > 0)
         {
+            GameManager.Instance.AddScore(fullRows.Count);
+
+            // Check Perfect Clear
+
+            // Nếu sau khi xóa hàng mà không còn block nào trên board, thì đó là Perfect Clear
+
             foreach (var r in fullRows)
             {
                 for (var c = 0; c < Size.x; c++)
@@ -246,6 +287,10 @@ public class Board : MonoBehaviour
             }
 
             topRowExclusive -= fullRows.Count;
+        }
+        else
+        {
+            GameManager.Instance.comboCount = 0;
         }
     }
 
@@ -321,5 +366,16 @@ public class Board : MonoBehaviour
     {
         Gizmos.color = Color.green;
         Gizmos.DrawLine(new Vector3(-1, topRowExclusive, 0), new Vector3(11, topRowExclusive, 0));
+    }
+
+    // Public methods for AI to control
+    public void AIMovePiece(Vector2Int direction)
+    {
+        MovePiece(direction);
+    }
+
+    public void AIRotatePiece()
+    {
+        RotatePiece();
     }
 }
