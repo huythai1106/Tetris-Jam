@@ -41,11 +41,11 @@ public class NextFrame : MonoBehaviour
     {
         return nextPiece;
     }
-    public void SpawnNextPiece()
+    public void SpawnNextPiece(int setSpawn = -1)
     {
         HidePiece();
 
-        tetrominoIndex = Random.Range(0, Tetrominoes.Length);
+        tetrominoIndex = setSpawn != -1 ? setSpawn : Random.Range(0, Tetrominoes.Length);
         pieceRotationIndex = Random.Range(0, 4);
 
         if (tetrominoIndex == 0) // I piece
@@ -68,7 +68,7 @@ public class NextFrame : MonoBehaviour
             cells[piecePoint.y + p.y, piecePoint.x + p.x].Show(pieceColor);
         }
     }
-    private void HidePiece()
+    public void HidePiece()
     {
         var tetromino = Tetrominoes.Get(tetrominoIndex, pieceRotationIndex);
 
