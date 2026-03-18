@@ -92,6 +92,10 @@ public class Board : MonoBehaviour
         {
             HandDropPiece();
         }
+        else if (Input.GetKeyDown(KeyCode.Return)) // Enter key để kích hoạt AI
+        {
+            GameManager.Instance.ExecuteAIMove();
+        }
     }
     public void SetNextPiece(Piece piece)
     {
@@ -113,18 +117,53 @@ public class Board : MonoBehaviour
         tetrominoIndex = piece.TetrominoIndex;
         pieceRotationIndex = piece.RotationIndex;
 
-        piecePoint = new(3, 17);
+        piecePoint = new(3, 16);
+        // piecePoint = LimitSpawnPoint(new(-2, 17), tetrominoIndex, pieceRotationIndex);
 
         pieceDropTime = 0f;
 
         ShowGhost();
         ShowPiece();
 
+
         if (!IsValidPiece(piecePoint, pieceRotationIndex))
         {
             Debug.Log("Game Over");
             enabled = false;
+
+            return;
         }
+
+        GameManager.Instance.ExecuteAIMove(); // Tạm thời comment để không tự động gọi AI
+    }
+
+    private Vector2Int LimitSpawnPoint(Vector2Int v, int teIndex, int roIndex)
+    {
+        Vector2Int[] a = Tetrominoes.Get(teIndex, roIndex);
+
+        int minX = int.MaxValue;
+        int maxX = int.MinValue;
+
+        foreach (var block in a)
+        {
+            minX = Mathf.Min(minX, block.x);
+            maxX = Mathf.Max(maxX, block.x);
+        }
+
+        Vector2Int result = v;
+
+        // Giới hạn để không vượt khỏi bên trái
+        if (v.x + minX < 0)
+        {
+            result.x = -minX;
+        }
+        // Giới hạn để không vượt khỏi bên phải
+        else if (v.x + maxX >= Size.x)
+        {
+            result.x = Size.x - 1 - maxX;
+        }
+
+        return result;
     }
 
     private void MovePiece(Vector2Int direction)
@@ -187,7 +226,7 @@ public class Board : MonoBehaviour
 
         return true;
     }
-    private void HandDropPiece()
+    public void HandDropPiece()
     {
         HidePiece();
         HideGhost();
@@ -227,6 +266,8 @@ public class Board : MonoBehaviour
         }
         //currentPiece = false;
         //nextFrame.SpawnNextPiece();
+
+        SpawnPiece(new Piece(Random.Range(0, Tetrominoes.Length), 0));
     }
 
     private bool IsValidPiece(Vector2Int point, int rotationIndex)

@@ -219,6 +219,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 371bb40894438e548b0a9da2f2bf3ecb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  aiController: {fileID: 662694559}
   boardController: {fileID: 2062486346}
   canAction: 1
   nextFrames:
@@ -228,6 +229,7 @@ MonoBehaviour:
   currentLevel: 1
   score: 0
   scorePerRow: 100
+  comboCount: 0
   levelText: {fileID: 1327562353}
   scoreText: {fileID: 993438209}
 --- !u!4 &61344931
@@ -557,8 +559,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   board: {fileID: 2062486346}
-  enableAI: 0
-  moveDelay: 0.1
 --- !u!4 &662694560
 Transform:
   m_ObjectHideFlags: 0

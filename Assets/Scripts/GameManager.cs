@@ -8,6 +8,7 @@ using UnityEngine.UI;
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
+    [SerializeField] private AIController aiController;
     public Board boardController;
     public bool canAction = true;
     public NextFrame[] nextFrames;
@@ -46,7 +47,7 @@ public class GameManager : MonoBehaviour
         {
             Vector3 screenPosition = Input.mousePosition;
             Vector3 worldPosition = Camera.main.ScreenToWorldPoint(screenPosition);
-            ChooseButton(worldPosition);
+            // ChooseButton(worldPosition);
         }
     }
     public void AddScore(int rowsCleared)
@@ -80,6 +81,7 @@ public class GameManager : MonoBehaviour
                 HideNextFrame(nextFrame);
                 //nextFrame.SpawnNextPiece();
                 boardController.SetNextPiece(nextFrame.GetNextPiece());
+                boardController.HandDropPiece();
             }
         }
     }
@@ -113,4 +115,48 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
+    public void ExecuteAIMove()
+    {
+        StartCoroutine(ExecuteAIMoveCoroutine());
+    }
+
+    private IEnumerator ExecuteAIMoveCoroutine()
+    {
+        aiController.GetBestMove(out Vector2Int bestPos, out int bestRot);
+
+        // Rotate piece to best rotation
+        int currentRot = boardController.PieceRotationIndex;
+        int rotDiff = (bestRot - currentRot + 4) % 4;
+        for (int i = 0; i < rotDiff; i++)
+        {
+            boardController.AIRotatePiece();
+            yield return new WaitForSeconds(0.1f); // Delay 100ms giữa các lần rotate
+        }
+
+        // Move piece to best X position
+        int currentX = boardController.PiecePoint.x;
+        int moveDiff = bestPos.x - currentX;
+
+        if (moveDiff > 0)
+        {
+            for (int i = 0; i < moveDiff; i++)
+            {
+                boardController.AIMovePiece(Vector2Int.right);
+                yield return new WaitForSeconds(0.1f); // Delay 50ms giữa các lần di chuyển
+            }
+        }
+        else if (moveDiff < 0)
+        {
+            for (int i = 0; i < -moveDiff; i++)
+            {
+                boardController.AIMovePiece(Vector2Int.left);
+                yield return new WaitForSeconds(0.1f); // Delay 50ms giữa các lần di chuyển
+            }
+        }
+
+        yield return new WaitForSeconds(0.2f); // Delay trước khi drop
+
+        // Drop piece
+        boardController.HandDropPiece();
+    }
 }

@@ -1,136 +1,261 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class AIController : MonoBehaviour
 {
     [SerializeField] private Board board;
-    [SerializeField] private bool enableAI = true;
-    [SerializeField] private float moveDelay = 0.1f; // Độ trễ giữa các lệnh di chuyển (để nhìn rõ AI đang làm gì)
 
-    private TetrisAI ai;
-    private float moveTimer = 0f;
-    private TetrisAI.Placement currentPlacement;
-    private bool isExecutingPlacement = false;
-    private int targetRotation = 0;
-    private int targetX = 0;
+    // Trọng số Heuristics (đã được tuning chuẩn cho Tetris)
+    private const float WeightHeight = -0.510066f;
+    private const float WeightLines = 0.760666f;
+    private const float WeightHoles = -0.35663f;
+    private const float WeightBumpiness = -0.184483f;
 
-    private void Start()
+    // Struct đại diện cho state của bảng, dùng value type để không tạo rác (GC)
+    private struct BoardState
     {
-        if (board == null)
+        public uint[] Rows; // 20 hàng, mỗi hàng dùng 10 bit (từ 0-9)
+        public int Width;
+        public int Height;
+
+        public BoardState(int width, int height)
         {
-            board = GetComponent<Board>();
+            Width = width;
+            Height = height;
+            Rows = new uint[height];
         }
 
-        ai = new TetrisAI(Board.Size.x, Board.Size.y);
-    }
-
-    private void Update()
-    {
-        if (!enableAI || board == null) return;
-
-        // Tìm placement tốt nhất khi piece mới spawn
-        if (!isExecutingPlacement)
+        // Deep copy nhanh
+        public BoardState Clone()
         {
-            FindAndExecuteBestPlacement();
+            BoardState copy = new BoardState(Width, Height);
+            System.Array.Copy(Rows, copy.Rows, Height);
+            return copy;
         }
-        else
+
+        public void SetBit(int x, int y)
         {
-            // Thực thi placement: di chuyển và xoay
-            moveTimer += Time.deltaTime;
-            if (moveTimer >= moveDelay)
-            {
-                moveTimer = 0f;
-                ExecutePlacementStep();
-            }
+            if (x >= 0 && x < Width && y >= 0 && y < Height)
+                Rows[y] |= (1u << x);
+        }
+
+        public bool GetBit(int x, int y)
+        {
+            if (x < 0 || x >= Width || y < 0 || y >= Height) return true; // Ra ngoài coi như đụng tường
+            return (Rows[y] & (1u << x)) != 0;
         }
     }
 
-    private void FindAndExecuteBestPlacement()
+    private struct Move
     {
-        // Lấy thông tin piece hiện tại từ Board qua public properties
-        currentPlacement = ai.FindBestPlacement(
-            board.TetrominoIndex,
-            board.PieceRotationIndex,
-            board.PiecePoint,
-            board.BoardData
-        );
-
-        targetRotation = currentPlacement.RotationIndex;
-        targetX = currentPlacement.Position.x;
-        isExecutingPlacement = true;
+        public Vector2Int Position;
+        public int Rotation;
+        public float Score;
+        public BoardState State;
     }
 
-    private void ExecutePlacementStep()
+    public void GetBestMove(out Vector2Int bestPosition, out int bestRotation)
     {
-        int currentX = board.PiecePoint.x;
-        int currentRotation = board.PieceRotationIndex;
+        bestPosition = Vector2Int.zero;
+        bestRotation = 0;
 
-        // Bước 1: Xoay piece về rotation đích
-        if (currentRotation != targetRotation)
+        if (board == null) return;
+
+        // 1. Lấy trạng thái bảng hiện tại chuyển sang Bitboard
+        BoardState initialState = GetCurrentBoardState();
+        int currentPiece = board.TetrominoIndex;
+
+        // Giả sử Board của bạn có NextPiece. Nếu không có, cứ truyền -1 để nó chạy 1-Ply
+        int nextPiece = -1; // Thay bằng board.NextTetrominoIndex nếu có
+
+        // 2. Lấy tất cả nước đi của mảnh hiện tại (Ply 1)
+        List<Move> ply1Moves = GetAllValidMoves(initialState, currentPiece);
+
+        if (ply1Moves.Count == 0) return;
+
+        // Nếu không có mảnh tiếp theo, chỉ cần trả về nước đi tốt nhất của Ply 1
+        if (nextPiece == -1)
         {
-            board.AIRotatePiece();
+            Move best = ply1Moves[0];
+            foreach (var m in ply1Moves) if (m.Score > best.Score) best = m;
+            bestPosition = best.Position;
+            bestRotation = best.Rotation;
             return;
         }
 
-        // Bước 2: Di chuyển piece đến X đích
-        if (currentX < targetX)
-        {
-            board.AIMovePiece(Vector2Int.right);
-        }
-        else if (currentX > targetX)
-        {
-            board.AIMovePiece(Vector2Int.left);
-        }
-        else
-        {
-            // Đã ở vị trí đích, để piece rơi xuống tự động
-            isExecutingPlacement = false;
-        }
-    }
+        // 3. BEAM SEARCH cho Ply 2 (Look-ahead)
+        // Lọc top K nước đi tốt nhất để tránh bùng nổ tổ hợp
+        int beamWidth = 6;
+        ply1Moves.Sort((a, b) => b.Score.CompareTo(a.Score));
+        int limit = Mathf.Min(beamWidth, ply1Moves.Count);
 
-    // Helper method để gọi các private method của Board qua Reflection
-    private void CallBoardMethod(string methodName, Vector2Int direction = default)
-    {
-        var method = board.GetType().GetMethod(methodName, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        if (method != null)
+        float globalBestScore = float.MinValue;
+
+        for (int i = 0; i < limit; i++)
         {
-            if (direction == default)
+            Move move1 = ply1Moves[i];
+
+            // Tìm nước đi cho mảnh Next trên bảng đã cập nhật của Move 1
+            List<Move> ply2Moves = GetAllValidMoves(move1.State, nextPiece);
+
+            float bestPly2Score = float.MinValue;
+            foreach (var move2 in ply2Moves)
             {
-                method.Invoke(board, null);
+                if (move2.Score > bestPly2Score)
+                    bestPly2Score = move2.Score;
             }
-            else
+
+            // Điểm tổng = Điểm nước 1 + Điểm tốt nhất của nước 2
+            float totalScore = move1.Score + bestPly2Score;
+
+            if (totalScore > globalBestScore)
             {
-                method.Invoke(board, new object[] { direction });
+                globalBestScore = totalScore;
+                bestPosition = move1.Position;
+                bestRotation = move1.Rotation;
             }
         }
     }
 
-    // Lấy dữ liệu từ Board (cần expose qua public properties hoặc reflection)
-    private int GetTetrominoIndex()
+    private BoardState GetCurrentBoardState()
     {
-        var field = board.GetType().GetField("tetrominoIndex", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return field != null ? (int)field.GetValue(board) : 0;
+        BoardState state = new BoardState(Board.Size.x, Board.Size.y);
+        int[,] data = board.BoardData;
+        for (int y = 0; y < Board.Size.y; y++)
+        {
+            for (int x = 0; x < Board.Size.x; x++)
+            {
+                if (data[y, x] > 0) state.SetBit(x, y);
+            }
+        }
+        return state;
     }
 
-    private int GetPieceRotationIndex()
+    private List<Move> GetAllValidMoves(BoardState state, int pieceIndex)
     {
-        var field = board.GetType().GetField("pieceRotationIndex", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return field != null ? (int)field.GetValue(board) : 0;
+        List<Move> validMoves = new List<Move>();
+
+        for (int rot = 0; rot < 4; rot++)
+        {
+            Vector2Int[] tetromino = Tetrominoes.Get(pieceIndex, rot);
+
+            // Bounds ngang thường nằm trong khoảng -2 đến Width + 2 tùy pivot
+            for (int x = -2; x < state.Width + 2; x++)
+            {
+                // Kiểm tra xem vị trí x ở hàng trên cùng có hợp lệ không
+                if (!IsValidPosition(state, x, state.Height - 1, tetromino)) continue;
+
+                // Thả rơi tự do
+                int y = state.Height - 1;
+                while (IsValidPosition(state, x, y - 1, tetromino))
+                {
+                    y--;
+                }
+
+                // Simulate đặt block và xóa hàng
+                BoardState newState = state.Clone();
+                int linesCleared = PlacePieceAndClearLines(ref newState, x, y, tetromino);
+
+                // Đánh giá điểm
+                float score = Evaluate(newState, linesCleared);
+
+                validMoves.Add(new Move
+                {
+                    Position = new Vector2Int(x, y),
+                    Rotation = rot,
+                    Score = score,
+                    State = newState
+                });
+            }
+        }
+        return validMoves;
     }
 
-    private Vector2Int GetPiecePosition()
+    private bool IsValidPosition(BoardState state, int x, int y, Vector2Int[] tetromino)
     {
-        var field = board.GetType().GetField("piecePoint", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return field != null ? (Vector2Int)field.GetValue(board) : Vector2Int.zero;
+        foreach (var block in tetromino)
+        {
+            int tx = x + block.x;
+            int ty = y + block.y;
+
+            if (tx < 0 || tx >= state.Width || ty < 0) return false;
+            if (ty < state.Height && state.GetBit(tx, ty)) return false;
+        }
+        return true;
     }
 
-    private int[,] GetBoardData()
+    private int PlacePieceAndClearLines(ref BoardState state, int x, int y, Vector2Int[] tetromino)
     {
-        var field = board.GetType().GetField("data", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-        return field != null ? (int[,])field.GetValue(board) : new int[Board.Size.y, Board.Size.x];
+        // Đặt block
+        foreach (var block in tetromino)
+        {
+            int tx = x + block.x;
+            int ty = y + block.y;
+            if (ty < state.Height) state.SetBit(tx, ty);
+        }
+
+        // Xóa hàng bằng bitwise
+        int linesCleared = 0;
+        uint fullRowMask = (1u << state.Width) - 1;
+
+        for (int r = 0; r < state.Height; r++)
+        {
+            if (state.Rows[r] == fullRowMask)
+            {
+                linesCleared++;
+                // Dịch các hàng phía trên xuống
+                for (int k = r; k < state.Height - 1; k++)
+                {
+                    state.Rows[k] = state.Rows[k + 1];
+                }
+                state.Rows[state.Height - 1] = 0;
+                r--; // Kiểm tra lại hàng r hiện tại sau khi dịch xuống
+            }
+        }
+
+        return linesCleared;
     }
 
-    public void ToggleAI()
+    private float Evaluate(BoardState state, int linesCleared)
     {
-        enableAI = !enableAI;
+        int aggregateHeight = 0;
+        int holes = 0;
+        int bumpiness = 0;
+
+        int[] columnHeights = new int[state.Width];
+
+        // Tính chiều cao từng cột và số lỗ hổng
+        for (int x = 0; x < state.Width; x++)
+        {
+            bool blockFound = false;
+            for (int y = state.Height - 1; y >= 0; y--)
+            {
+                if (state.GetBit(x, y))
+                {
+                    if (!blockFound)
+                    {
+                        columnHeights[x] = y + 1;
+                        aggregateHeight += columnHeights[x];
+                        blockFound = true;
+                    }
+                }
+                else if (blockFound)
+                {
+                    holes++; // Ô trống nằm dưới ô có block là lỗ hổng
+                }
+            }
+        }
+
+        // Tính độ gồ ghề (Bumpiness)
+        for (int x = 0; x < state.Width - 1; x++)
+        {
+            bumpiness += Mathf.Abs(columnHeights[x] - columnHeights[x + 1]);
+        }
+
+        // Hàm mục tiêu
+        return (WeightHeight * aggregateHeight) +
+               (WeightLines * linesCleared) +
+               (WeightHoles * holes) +
+               (WeightBumpiness * bumpiness);
     }
 }
