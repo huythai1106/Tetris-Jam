@@ -47,7 +47,7 @@ public class GameManager : MonoBehaviour
         {
             Vector3 screenPosition = Input.mousePosition;
             Vector3 worldPosition = Camera.main.ScreenToWorldPoint(screenPosition);
-            // ChooseButton(worldPosition);
+            ChooseButton(worldPosition);
         }
     }
     public void AddScore(int rowsCleared)
@@ -77,31 +77,19 @@ public class GameManager : MonoBehaviour
             NextFrame nextFrame = hitCollider.GetComponent<NextFrame>();
             if (nextFrame != null)
             {
-                canAction = false;
-                HideNextFrame(nextFrame);
+                // canAction = false;
+                // HideNextFrame(nextFrame);
                 //nextFrame.SpawnNextPiece();
-                boardController.SetNextPiece(nextFrame.GetNextPiece());
+
+                // boardController.SetNextPiece(nextFrame.GetNextPiece());
+                boardController.nextPiece = nextFrame.GetNextPiece();
                 boardController.HandDropPiece();
+
+                // boardController.SpawnPiece(nextFrame.GetNextPiece());
             }
         }
     }
-    public void SpawnNextPiece()
-    {
-        List<int> spawned = new List<int>();
 
-        foreach (NextFrame next in nextFrames)
-        {
-            int tetrominoIndex = Random.Range(0, Tetrominoes.Length);
-
-            while (spawned != null && spawned.Contains(tetrominoIndex))
-            {
-                tetrominoIndex = Random.Range(0, Tetrominoes.Length);
-            }
-
-            next.SpawnNextPiece(tetrominoIndex);
-            spawned.Add(tetrominoIndex);
-        }
-    }
     public void HideNextFrame(NextFrame nextFrame)
     {
         foreach (NextFrame next in nextFrames)
@@ -157,6 +145,6 @@ public class GameManager : MonoBehaviour
         yield return new WaitForSeconds(0.2f); // Delay trước khi drop
 
         // Drop piece
-        boardController.HandDropPiece();
+        // boardController.HandDropPiece();
     }
 }

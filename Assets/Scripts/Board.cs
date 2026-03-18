@@ -7,7 +7,7 @@ public class Board : MonoBehaviour
     [SerializeField] private Cell cellPrefab;
     [SerializeField] private Transform cellsTransform;
     [SerializeField] private NextFrame nextFrame;
-    private Piece nextPiece;
+    public Piece nextPiece;
     bool currentPiece = true;
     private readonly Cell[,] cells = new Cell[Size.y, Size.x];
     private readonly int[,] data = new int[Size.y, Size.x];
@@ -51,7 +51,7 @@ public class Board : MonoBehaviour
         }
 
         SpawnPiece(new Piece(firstPieceIndex, firstPieceRotationIndex));
-        GameManager.Instance.SpawnNextPiece();
+        // GameManager.Instance.SpawnNextPiece();
         //nextFrame.SpawnNextPiece();
     }
 
@@ -106,7 +106,7 @@ public class Board : MonoBehaviour
             SpawnPiece(nextPiece);
             nextPiece = null;
 
-            GameManager.Instance.SpawnNextPiece();
+            // GameManager.Instance.SpawnNextPiece();
             GameManager.Instance.canAction = true;
         }
     }
@@ -114,6 +114,7 @@ public class Board : MonoBehaviour
     {
         if (piece == null) return;
         currentPiece = true;
+        nextPiece = null;
         tetrominoIndex = piece.TetrominoIndex;
         pieceRotationIndex = piece.RotationIndex;
 
@@ -256,18 +257,19 @@ public class Board : MonoBehaviour
         if (nextPiece != null)
         {
             SpawnPiece(nextPiece);
-            nextPiece = null;
-            GameManager.Instance.SpawnNextPiece();
+            // nextPiece = null;
+            // GameManager.Instance.SpawnNextPiece();
             GameManager.Instance.canAction = true;
         }
         else
         {
             currentPiece = false;
+            SpawnPiece(new Piece(Random.Range(0, Tetrominoes.Length), 0));
         }
         //currentPiece = false;
         //nextFrame.SpawnNextPiece();
 
-        SpawnPiece(new Piece(Random.Range(0, Tetrominoes.Length), 0));
+
     }
 
     private bool IsValidPiece(Vector2Int point, int rotationIndex)

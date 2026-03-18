@@ -20,10 +20,11 @@ public class NextFrame : MonoBehaviour
     [SerializeField] private Cell cellPrefab;
     [SerializeField] private Transform cellsTransform;
     private readonly Cell[,] cells = new Cell[Size.y, Size.x];
-    private int tetrominoIndex;
+    public int tetrominoIndex;
     private Vector2Int piecePoint;
     private int pieceRotationIndex;
     private Piece nextPiece;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -36,17 +37,21 @@ public class NextFrame : MonoBehaviour
                 cells[r, c].Hide();
             }
         }
+
+        SpawnNextPiece();
+
     }
     public Piece GetNextPiece()
     {
         return nextPiece;
     }
-    public void SpawnNextPiece(int setSpawn = -1)
+    public void SpawnNextPiece()
     {
         HidePiece();
 
-        tetrominoIndex = setSpawn != -1 ? setSpawn : Random.Range(0, Tetrominoes.Length);
-        pieceRotationIndex = Random.Range(0, 4);
+        // tetrominoIndex = setSpawn != -1 ? setSpawn : Random.Range(0, Tetrominoes.Length);
+        // pieceRotationIndex = Random.Range(0, 4);
+        pieceRotationIndex = 0;
 
         if (tetrominoIndex == 0) // I piece
         {
