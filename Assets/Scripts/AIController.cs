@@ -62,8 +62,13 @@ public class AIController : MonoBehaviour
         if (board == null) return;
 
         // 1. Lấy trạng thái bảng hiện tại chuyển sang Bitboard
-        BoardState initialState = GetCurrentBoardState();
-        int currentPiece = board.TetrominoIndex;
+        // BoardState initialState = GetCurrentBoardState();
+        // int currentPiece = board.TetrominoIndex;
+
+        BoardState initialState = GetPredictBoardState();
+        int currentPiece = Random.Range(0, Tetrominoes.Length);
+
+        Debug.Log(currentPiece);
 
         // Giả sử Board của bạn có NextPiece. Nếu không có, cứ truyền -1 để nó chạy 1-Ply
         int nextPiece = -1; // Thay bằng board.NextTetrominoIndex nếu có
@@ -129,6 +134,29 @@ public class AIController : MonoBehaviour
             }
         }
         return state;
+    }
+
+    private BoardState GetPredictBoardState()
+    {
+        // Dự đoán nơi current piece sẽ hạ cánh nếu rơi tự do từ vị trí hiện tại
+        BoardState predictState = GetCurrentBoardState();
+        int pieceIndex = board.TetrominoIndex;
+        Vector2Int currentPos = board.PiecePoint;
+        int currentRotation = board.PieceRotationIndex;
+
+        Vector2Int[] tetromino = Tetrominoes.Get(pieceIndex, currentRotation);
+
+        // Tìm vị trí cuối cùng khi piece rơi xuống
+        int finalY = currentPos.y;
+        while (IsValidPosition(predictState, currentPos.x, finalY - 1, tetromino))
+        {
+            finalY--;
+        }
+
+        // Đặt piece vào vị trí cuối cùng dự đoán
+        int linesCleared = PlacePieceAndClearLines(ref predictState, currentPos.x, finalY, tetromino);
+
+        return predictState;
     }
 
     private List<Move> GetAllValidMoves(BoardState state, int pieceIndex)

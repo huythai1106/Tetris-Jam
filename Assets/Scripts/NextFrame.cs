@@ -53,11 +53,6 @@ public class NextFrame : MonoBehaviour
         // pieceRotationIndex = Random.Range(0, 4);
         pieceRotationIndex = 0;
 
-        if (tetrominoIndex == 0) // I piece
-        {
-            pieceRotationIndex = Random.Range(0, 2) == 0 ? 0 : 2; // I piece has only 2 unique rotations
-        }
-
         piecePoint = new(0, 0);
         nextPiece = new Piece(tetrominoIndex, pieceRotationIndex);
 
@@ -81,5 +76,10 @@ public class NextFrame : MonoBehaviour
         {
             cells[piecePoint.y + p.y, piecePoint.x + p.x].Hide();
         }
+    }
+
+    public void CheckSpam()
+    {
+
     }
 }

@@ -5,6 +5,12 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
+public struct NextMove
+{
+    public Vector2Int pos;
+    public int rot;
+}
+
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
@@ -22,6 +28,7 @@ public class GameManager : MonoBehaviour
     [Header("UI")]
     public Text levelText;
     public Text scoreText;
+    public NextMove nextMove;
 
     // Start is called before the first frame update
     void Awake()
@@ -110,7 +117,9 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator ExecuteAIMoveCoroutine()
     {
-        aiController.GetBestMove(out Vector2Int bestPos, out int bestRot);
+        // aiController.GetBestMove(out Vector2Int bestPos, out int bestRot);
+        Vector2Int bestPos = nextMove.pos;
+        int bestRot = nextMove.rot;
 
         // Rotate piece to best rotation
         int currentRot = boardController.PieceRotationIndex;
@@ -146,5 +155,17 @@ public class GameManager : MonoBehaviour
 
         // Drop piece
         // boardController.HandDropPiece();
+    }
+
+    public void GenerateNextMove()
+    {
+        aiController.GetBestMove(out Vector2Int bestPos, out int bestRot);
+        nextMove = new()
+        {
+            pos = bestPos,
+            rot = bestRot
+        };
+
+        Debug.Log("Next Move - Position: " + bestPos + ", Rotation: " + bestRot);
     }
 }

@@ -41,6 +41,8 @@ public class Board : MonoBehaviour
             }
         }
 
+        GameManager.Instance.GenerateNextMove();
+
         // Spawn vien dau tien
         int firstPieceIndex = Random.Range(0, Tetrominoes.Length);
         int firstPieceRotationIndex = Random.Range(0, 4);
@@ -136,6 +138,8 @@ public class Board : MonoBehaviour
         }
 
         GameManager.Instance.ExecuteAIMove(); // Tạm thời comment để không tự động gọi AI
+
+        GameManager.Instance.GenerateNextMove();
     }
 
     private Vector2Int LimitSpawnPoint(Vector2Int v, int teIndex, int roIndex)
