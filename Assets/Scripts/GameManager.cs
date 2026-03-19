@@ -105,6 +105,7 @@ public class GameManager : MonoBehaviour
                 next.HidePiece();
         }
     }
+
     public void RestartGame()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
@@ -151,8 +152,9 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        yield return new WaitForSeconds(0.2f); // Delay trước khi drop
+        GenerateNextMove();
 
+        yield return new WaitForSeconds(0.2f); // Delay trước khi drop
         // Drop piece
         // boardController.HandDropPiece();
     }

@@ -12,7 +12,7 @@ public class AIController : MonoBehaviour
     private const float WeightBumpiness = -0.184483f;
 
     // Struct đại diện cho state của bảng, dùng value type để không tạo rác (GC)
-    private struct BoardState
+    public struct BoardState
     {
         public uint[] Rows; // 20 hàng, mỗi hàng dùng 10 bit (từ 0-9)
         public int Width;
@@ -136,7 +136,7 @@ public class AIController : MonoBehaviour
         return state;
     }
 
-    private BoardState GetPredictBoardState()
+    public BoardState GetPredictBoardState()
     {
         // Dự đoán nơi current piece sẽ hạ cánh nếu rơi tự do từ vị trí hiện tại
         BoardState predictState = GetCurrentBoardState();

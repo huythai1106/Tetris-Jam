@@ -139,7 +139,7 @@ public class Board : MonoBehaviour
 
         GameManager.Instance.ExecuteAIMove(); // Tạm thời comment để không tự động gọi AI
 
-        GameManager.Instance.GenerateNextMove();
+        // GameManager.Instance.GenerateNextMove();
     }
 
     private Vector2Int LimitSpawnPoint(Vector2Int v, int teIndex, int roIndex)
