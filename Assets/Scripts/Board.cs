@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 public class Board : MonoBehaviour
@@ -28,6 +29,9 @@ public class Board : MonoBehaviour
     public int PieceRotationIndex => pieceRotationIndex;
     public Vector2Int PiecePoint => piecePoint;
     public int[,] BoardData => data;
+
+    public GameObject arrow;
+    public TextMeshPro numOfRot;
 
     private void Start()
     {
@@ -419,6 +423,12 @@ public class Board : MonoBehaviour
     public void AIMovePiece(Vector2Int direction)
     {
         MovePiece(direction);
+    }
+
+    public void SetInfo(Vector2Int pos, int rot)
+    {
+        arrow.transform.position = new(pos.x + 1.5f, 20);
+        numOfRot.text = rot.ToString();
     }
 
     public void AIRotatePiece()

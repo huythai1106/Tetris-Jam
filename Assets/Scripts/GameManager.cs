@@ -168,6 +168,7 @@ public class GameManager : MonoBehaviour
             rot = bestRot
         };
 
+        boardController.SetInfo(bestPos, bestRot);
         Debug.Log("Next Move - Position: " + bestPos + ", Rotation: " + bestRot);
     }
 }
