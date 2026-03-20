@@ -42,8 +42,8 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         //SpawnNextPiece();
-        levelText.text = "Level: " + currentLevel;
-        scoreText.text = "Score: " + score;
+        levelText.text = currentLevel.ToString();
+        scoreText.text = score.ToString();
     }
 
     // Update is called once per frame
@@ -63,13 +63,13 @@ public class GameManager : MonoBehaviour
         int scoreCombo = comboCount > 1 ? comboCount * 50 * currentLevel : 0; // Thêm điểm combo nếu comboCount > 1
         float scoreToAdd = Mathf.Pow(2, rowsCleared) * scorePerRow * currentLevel + scoreCombo;
         score += Mathf.RoundToInt(scoreToAdd);
-        scoreText.text = "Score: " + score;
+        scoreText.text = score.ToString();
 
         linesCleared += rowsCleared;
         if (linesCleared >= 10)
         {
             currentLevel += 1;
-            levelText.text = "Level: " + currentLevel;
+            levelText.text = currentLevel.ToString();
             linesCleared = 0;
 
             boardController.dropTime = 0.8f * Mathf.Pow(0.9f, currentLevel - 1); // Tăng tốc độ rơi của piece theo level
