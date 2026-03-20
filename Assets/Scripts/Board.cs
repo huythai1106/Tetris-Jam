@@ -427,7 +427,7 @@ public class Board : MonoBehaviour
 
     public void SetInfo(Vector2Int pos, int rot)
     {
-        arrow.transform.position = new(pos.x + 1.5f, 20);
+        arrow.transform.position = new(pos.x + 1.5f, 18.5f, 0);
         numOfRot.text = rot.ToString();
     }
 
