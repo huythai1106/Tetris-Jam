@@ -17,7 +17,10 @@ public class GameManager : MonoBehaviour
     [SerializeField] private AIController aiController;
     public Board boardController;
     public bool canAction = true;
+    bool isPaused = false;
     public NextFrame[] nextFrames;
+    private float lastClickTime;
+    private const float doubleClickThreshold = 0.3f;
     [Header("LevelControl")]
     public int currentLevel = 1;
     int linesCleared = 0;
@@ -29,6 +32,8 @@ public class GameManager : MonoBehaviour
     public Text levelText;
     public Text scoreText;
     public NextMove nextMove;
+    public SpriteRenderer[] hintRenderers;
+    public ShowFrame[] hintShowFrames;
 
     // Start is called before the first frame update
     void Awake()
@@ -54,7 +59,30 @@ public class GameManager : MonoBehaviour
         {
             Vector3 screenPosition = Input.mousePosition;
             Vector3 worldPosition = Camera.main.ScreenToWorldPoint(screenPosition);
-            ChooseButton(worldPosition);
+
+            float timeSinceLastClick = Time.time - lastClickTime;
+
+            if (timeSinceLastClick <= doubleClickThreshold)
+            {
+                // ĐÂY LÀ DOUBLE CLICK
+                ChooseButton(worldPosition, true);
+            }
+            else
+            {
+                // ĐÂY LÀ SINGLE CLICK (Hoặc lần click đầu tiên)
+                ChooseButton(worldPosition, false);
+            }
+
+            lastClickTime = Time.time;
+        }
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            RestartGame();
+        }
+        else if (Input.GetKeyDown(KeyCode.P))
+        {
+            TogglePause();
         }
     }
     public void AddScore(int rowsCleared)
@@ -66,7 +94,7 @@ public class GameManager : MonoBehaviour
         scoreText.text = score.ToString();
 
         linesCleared += rowsCleared;
-        if (linesCleared >= 10)
+        if (linesCleared >= 6)
         {
             currentLevel += 1;
             levelText.text = currentLevel.ToString();
@@ -75,25 +103,81 @@ public class GameManager : MonoBehaviour
             boardController.dropTime = 0.8f * Mathf.Pow(0.9f, currentLevel - 1); // Tăng tốc độ rơi của piece theo level
         }
     }
-    public void ChooseButton(Vector3 position)
+    public void ChooseButton(Vector3 position, bool isDoubleClick = false)
     {
         Collider2D hitCollider = Physics2D.OverlapPoint(position, LayerMask.GetMask("Button"));
 
         if (hitCollider != null)
         {
             NextFrame nextFrame = hitCollider.GetComponent<NextFrame>();
-            if (nextFrame != null)
+            if (nextFrame != null && nextFrame.isEnabled)
             {
                 // canAction = false;
                 // HideNextFrame(nextFrame);
                 //nextFrame.SpawnNextPiece();
-
                 // boardController.SetNextPiece(nextFrame.GetNextPiece());
-                boardController.nextPiece = nextFrame.GetNextPiece();
-                boardController.HandDropPiece();
-
+                if (isDoubleClick)
+                {
+                    ResetNextFrames(nextFrame);
+                    boardController.nextPiece = nextFrame.GetNextPiece();
+                    lastChosenFrame = nextFrame;
+                    boardController.HandDropPiece();
+                }
+                else
+                {
+                    ShowDetailHint(nextFrame.tetrominoIndex);
+                    ResetAnimScale();
+                    nextFrame.SetAnimScale();
+                }
                 // boardController.SpawnPiece(nextFrame.GetNextPiece());
             }
+        }
+    }
+    NextFrame lastChosenFrame;
+    public void ResetNextFrames(NextFrame exceptFrame)
+    {
+        if (lastChosenFrame != null && lastChosenFrame != exceptFrame)
+        {
+            lastChosenFrame.SetCountChoose(0);
+        }
+
+        foreach (NextFrame next in nextFrames)
+        {
+            if (!next.isEnabled)
+            {
+                next.SetEnable(true);
+            }
+        }
+    }
+    public void ResetAnimScale()
+    {
+        foreach (NextFrame next in nextFrames)
+        {
+            next.StopAnimScale();
+        }
+    }
+    public void ShowDetailHint(int tetrominoIndex)
+    {
+        // for (int i = 0; i < hintRenderers.Length; i++)
+        // {
+        //     hintRenderers[i].gameObject.SetActive(false);
+        // }
+
+        // for (int i = 0; i < hintSprites.Length; i++)
+        // {
+        //     hintRenderers[i].gameObject.SetActive(true);
+        //     hintRenderers[i].sprite = hintSprites[i];
+        // }
+        foreach (var item in hintShowFrames)
+        {
+            item.ShowPiece(tetrominoIndex);
+        }
+    }
+    public void HideDetailHint()
+    {
+        foreach (var item in hintShowFrames)
+        {
+            item.HidePiece();
         }
     }
 
@@ -109,6 +193,11 @@ public class GameManager : MonoBehaviour
     public void RestartGame()
     {
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+    public void TogglePause()
+    {
+        isPaused = !isPaused;
+        Time.timeScale = isPaused ? 0 : 1;
     }
 
     public void ExecuteAIMove()

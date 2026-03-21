@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 public class Piece
@@ -17,6 +18,7 @@ public class Piece
 public class NextFrame : MonoBehaviour
 {
     public static readonly Vector2Int Size = new(4, 4);
+    public bool isEnabled = true;
     [SerializeField] private Cell cellPrefab;
     [SerializeField] private Transform cellsTransform;
     // private readonly Cell[,] cells = new Cell[Size.y, Size.x];
@@ -25,6 +27,8 @@ public class NextFrame : MonoBehaviour
     private int pieceRotationIndex;
     private Piece nextPiece;
     [SerializeField] private SpriteRenderer sprite;
+    public Sprite[] hintSprites;
+    Vector3 originalSpriteScale;
 
     // Start is called before the first frame update
     void Start()
@@ -41,11 +45,34 @@ public class NextFrame : MonoBehaviour
 
         // SpawnNextPiece();
         nextPiece = new Piece(tetrominoIndex, pieceRotationIndex);
-
+        originalSpriteScale = sprite.transform.localScale;
     }
+    int countChoose = 0;
     public Piece GetNextPiece()
     {
+        if (isEnabled)
+        {
+            countChoose += 1;
+            if (countChoose >= 3)
+            {
+                SetEnable(false);
+            }
+        }
+
         return nextPiece;
+    }
+    public void SetCountChoose(int count)
+    {
+        countChoose = count;
+    }
+    public void SetEnable(bool value)
+    {
+        isEnabled = value;
+        sprite.color = new Color(1, 1, 1, value ? 1f : 0.3f);
+        if (!value)
+        {
+            countChoose = 0;
+        }
     }
     public void SpawnNextPiece()
     {
@@ -60,6 +87,15 @@ public class NextFrame : MonoBehaviour
         // nextPiece = new Piece(tetrominoIndex, pieceRotationIndex);
 
         // ShowPiece();
+    }
+    public void SetAnimScale()
+    {
+        sprite.transform.DOScale(originalSpriteScale * 1.3f, 0.3f).SetEase(Ease.InOutSine).SetLoops(-1, LoopType.Yoyo);
+    }
+    public void StopAnimScale()
+    {
+        sprite.transform.DOKill();
+        sprite.transform.localScale = originalSpriteScale;
     }
     private void ShowPiece()
     {

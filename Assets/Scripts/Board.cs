@@ -277,7 +277,8 @@ public class Board : MonoBehaviour
         //currentPiece = false;
         //nextFrame.SpawnNextPiece();
 
-
+        GameManager.Instance.HideDetailHint();
+        GameManager.Instance.ResetAnimScale();
     }
 
     private bool IsValidPiece(Vector2Int point, int rotationIndex)
